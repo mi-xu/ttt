@@ -68,6 +68,14 @@ Default `vty` events
 
 ways to refer to rendering state
 
+### appDraw
+
+Draws a list of `Widget` layers
+Fixed size
+Responsive layout combinators
+
+Drawing functions requesting the use of attributes consult the attribute map
+
 ## Dialog
 
 render takes a dialog state
