@@ -12,7 +12,7 @@ import Control.Monad.State (modify)
 import Graphics.Vty qualified as V
 
 data CellIndex = C0 | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Enum)
 
 left :: CellIndex -> CellIndex
 left C1 = C0
@@ -50,12 +50,24 @@ up C7 = C4
 up C8 = C5
 up x = x
 
+data CellState = Empty | X | O
+  deriving (Show, Eq)
+
+nextState :: CellState -> CellState
+nextState Empty = X
+nextState X = O
+nextState O = Empty
+
 data AppState where
-  AppState :: {selectedCell :: CellIndex} -> AppState
+  AppState ::
+    { selectedCell :: CellIndex,
+      cellStates :: [CellState]
+    } ->
+    AppState
   deriving (Show, Eq)
 
 initialState :: AppState
-initialState = AppState {selectedCell = C0}
+initialState = AppState {selectedCell = C0, cellStates = [Empty | _ <- [C0 .. C8]]}
 
 cellContent :: A.AttrName
 cellContent = A.attrName "cellContent"
@@ -77,7 +89,12 @@ cell s i =
     $ withAttr cellContent
     $ B.border
     $ C.center
-    $ str " "
+    $ str
+      ( case cellStates s !! fromEnum i of
+          Empty -> " "
+          X -> "X"
+          O -> "O"
+      )
 
 drawUI :: AppState -> [Widget ()]
 drawUI s =
@@ -94,6 +111,16 @@ drawUI s =
 moveSelectedCell :: (CellIndex -> CellIndex) -> EventM () AppState ()
 moveSelectedCell move = modify $ \s -> s {selectedCell = move (selectedCell s)}
 
+cycleSelectedCellState :: EventM () AppState ()
+cycleSelectedCellState = modify $ \s ->
+  s
+    { cellStates =
+        zipWith
+          (\i cs -> if i == selectedCell s then nextState cs else cs)
+          [C0 .. C8]
+          (cellStates s)
+    }
+
 appEvent :: BrickEvent () e -> EventM () AppState ()
 appEvent (VtyEvent (V.EvKey V.KEsc [])) = M.halt
 appEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = M.halt
@@ -101,6 +128,7 @@ appEvent (VtyEvent (V.EvKey (V.KChar 'h') [])) = moveSelectedCell left
 appEvent (VtyEvent (V.EvKey (V.KChar 'l') [])) = moveSelectedCell right
 appEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = moveSelectedCell down
 appEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = moveSelectedCell up
+appEvent (VtyEvent (V.EvKey (V.KChar ' ') [])) = cycleSelectedCellState
 appEvent _ = return ()
 
 theApp :: M.App AppState e ()
