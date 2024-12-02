@@ -103,6 +103,19 @@ executable ttt
     default-language: GHC2021
     ghc-options: -threaded
 
+executable tictac
+    import:           warnings
+    main-is:          TicTac.hs
+    build-depends:
+        base ^>=4.19.1.0,
+        brick ^>=2.5,
+        vty >= 6.0,
+        mtl,
+        microlens
+    hs-source-dirs:   app
+    default-language: GHC2021
+    ghc-options: -threaded
+
 executable palette
     import:           warnings
     main-is:          Palette.hs
