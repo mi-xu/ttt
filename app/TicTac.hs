@@ -3,7 +3,7 @@ module Main where
 import Brick.AttrMap qualified as A
 import Brick.Main qualified as M
 import Brick.Types (BrickEvent (VtyEvent), EventM, Widget)
-import Brick.Util (fg, on)
+import Brick.Util (fg)
 import Brick.Widgets.Border qualified as B
 import Brick.Widgets.Border.Style qualified as BS
 import Brick.Widgets.Center qualified as C
@@ -50,53 +50,57 @@ up C7 = C4
 up C8 = C5
 up x = x
 
-data CellState = Empty | X | O
+data Mark = X | O
   deriving (Show, Eq)
 
-nextState :: CellState -> CellState
-nextState Empty = X
-nextState X = O
-nextState O = Empty
+nextState :: Maybe Mark -> Maybe Mark
+nextState Nothing = Just X
+nextState (Just X) = Just O
+nextState (Just O) = Nothing
 
 data AppState where
   AppState ::
     { selectedCell :: CellIndex,
-      cellStates :: [CellState]
+      cellStates :: [Maybe Mark]
     } ->
     AppState
   deriving (Show, Eq)
 
 type CellTriple = (CellIndex, CellIndex, CellIndex)
 
-checkMatch :: CellTriple -> [CellState] -> CellState
-checkMatch (i1, i2, i3) states =
+checkMatch :: CellTriple -> [Maybe Mark] -> Maybe (Mark, CellTriple)
+checkMatch triple@(i1, i2, i3) states =
   let s1 = states !! fromEnum i1
       s2 = states !! fromEnum i2
       s3 = states !! fromEnum i3
-   in if s1 == s2 && s2 == s3 && s1 /= Empty then s1 else Empty
+   in case (s1, s2, s3) of
+        (Just a, Just b, Just c) ->
+          if a == b && b == c
+            then Just (a, triple)
+            else Nothing
+        _ -> Nothing
 
-checkWin :: [CellState] -> (CellState, Maybe CellTriple)
-checkWin states = go matches
-  where
-    matches =
-      [ (C0, C1, C2),
-        (C3, C4, C5),
-        (C6, C7, C8),
-        (C0, C3, C6),
-        (C1, C4, C7),
-        (C2, C5, C8),
-        (C0, C4, C8),
-        (C6, C4, C2)
-      ]
-    go [] = (Empty, Nothing)
-    go (triple : rest) =
-      let result = checkMatch triple states
-       in if result /= Empty
-            then (result, Just triple)
-            else go rest
+checkWin :: [Maybe Mark] -> Maybe (Mark, CellTriple)
+checkWin states =
+  let matches =
+        [ (C0, C1, C2),
+          (C3, C4, C5),
+          (C6, C7, C8),
+          (C0, C3, C6),
+          (C1, C4, C7),
+          (C2, C5, C8),
+          (C0, C4, C8),
+          (C6, C4, C2)
+        ]
+      check [] = Nothing
+      check (triple : rest) =
+        case checkMatch triple states of
+          Just result -> Just result
+          Nothing -> check rest
+   in check matches
 
 initialState :: AppState
-initialState = AppState {selectedCell = C0, cellStates = [Empty | _ <- [C0 .. C8]]}
+initialState = AppState {selectedCell = C0, cellStates = [Nothing | _ <- [C0 .. C8]]}
 
 cellContent :: A.AttrName
 cellContent = A.attrName "cellContent"
@@ -121,22 +125,23 @@ withCellBorder isSelected =
   updateAttrMap
     (A.applyAttrMappings [(B.borderAttr, fg (if isSelected then V.cyan else V.black))])
 
-cell :: AppState -> (CellState, Maybe CellTriple) -> CellIndex -> Widget ()
-cell s (_, wt) i =
-  let isWinner = case wt of
-        Just (i1, i2, i3) -> i == i1 || i == i2 || i == i3
-        Nothing -> False
-      cellStyle =
-        ( case (isWinner, cellStates s !! fromEnum i) of
-            (True, X) -> winningX
-            (True, O) -> winningO
-            _ -> cellContent
-        )
+cell :: AppState -> Maybe (Mark, CellTriple) -> CellIndex -> Widget ()
+cell s win i =
+  let cellStyle = case win of
+        Just (X, (i1, i2, i3)) ->
+          if i == i1 || i == i2 || i == i3
+            then winningX
+            else cellContent
+        Just (O, (i1, i2, i3)) ->
+          if i == i1 || i == i2 || i == i3
+            then winningO
+            else cellContent
+        _ -> cellContent
       label =
         ( case cellStates s !! fromEnum i of
-            Empty -> " "
-            X -> "X"
-            O -> "O"
+            Nothing -> " "
+            Just X -> "X"
+            Just O -> "O"
         )
    in setAvailableSize (9, 5)
         $ withCellBorder
@@ -173,7 +178,7 @@ cycleSelectedCellState = modify $ \s ->
     }
 
 resetCellState :: EventM () AppState ()
-resetCellState = modify $ \s -> s {cellStates = [Empty | _ <- [C0 .. C8]]}
+resetCellState = modify $ \s -> s {cellStates = [Nothing | _ <- [C0 .. C8]]}
 
 appEvent :: BrickEvent () e -> EventM () AppState ()
 appEvent (VtyEvent (V.EvKey V.KEsc [])) = M.halt
