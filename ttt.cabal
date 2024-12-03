@@ -75,37 +75,9 @@ library
     -- Base language which the package is written in.
     default-language: GHC2021
 
-executable ttt
-    -- Import common warning flags.
+executable main
     import:           warnings
-
-    -- .hs or .lhs file containing the Main module.
-    main-is:          Main.hs
-
-    -- Modules included in this executable, other than Main.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-
-    -- Other library packages from which modules are imported.
-    build-depends:
-        base ^>=4.19.1.0,
-        brick ^>=2.5,
-        vty >= 6.0,
-        microlens >= 0.3.0.0,
-        ttt
-
-    -- Directories containing source files.
-    hs-source-dirs:   app
-
-    -- Base language which the package is written in.
-    default-language: GHC2021
-    ghc-options: -threaded
-
-executable tictac
-    import:           warnings
-    main-is:          TicTac.hs
+    main-is:          main.hs
     build-depends:
         base ^>=4.19.1.0,
         brick ^>=2.5,
@@ -115,41 +87,3 @@ executable tictac
     hs-source-dirs:   app
     default-language: GHC2021
     ghc-options: -threaded
-
-executable palette
-    import:           warnings
-    main-is:          Palette.hs
-    build-depends:
-        base ^>=4.19.1.0,
-        brick ^>=2.5,
-        vty >= 6.0,
-    hs-source-dirs:   app
-    default-language: GHC2021
-    ghc-options: -threaded
-
-test-suite ttt-test
-    -- Import common warning flags.
-    import:           warnings
-
-    -- Base language which the package is written in.
-    default-language: GHC2021
-
-    -- Modules included in this executable, other than Main.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-
-    -- The interface type and version of the test suite.
-    type:             exitcode-stdio-1.0
-
-    -- Directories containing source files.
-    hs-source-dirs:   test
-
-    -- The entrypoint to the test suite.
-    main-is:          Main.hs
-
-    -- Test dependencies.
-    build-depends:
-        base ^>=4.19.1.0,
-        ttt
